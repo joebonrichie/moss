@@ -91,14 +91,15 @@ import std.stdio;
         /* FIXME: use moss-fetcher to handle this */
         if (uri.startsWith("http://", "https://"))
         {
-            auto reachable = () @trusted
-            {
+            auto reachable = () @trusted {
                 import etc.c.curl;
                 import std.string : toStringz;
+
                 /* attempt to "ping" the url */
                 auto curl = curl_easy_init();
                 long status = 0;
-                if (curl) {
+                if (curl)
+                {
                     curl_easy_setopt(curl, CurlOption.url, uri.toStringz);
                     curl_easy_setopt(curl, CurlOption.nobody, true);
                     curl_easy_setopt(curl, CurlOption.followlocation, true);
@@ -111,7 +112,8 @@ import std.stdio;
             }();
             if (reachable >= 300 || reachable < 200)
             {
-                error(format!"Refusing to add remote as the URI is unreachable, status code: %s"(reachable));
+                error(format!"Refusing to add remote as the URI is unreachable, status code: %s"(
+                        reachable));
                 return 1;
             }
         }
@@ -138,15 +140,16 @@ import std.stdio;
             }
         }
 
-        return cl.remotes.add(name, uri, priority).match!((Failure f) {
+        return cl.remotes.add(name, uri, description, priority).match!((Failure f) {
             errorf("%s", f.message);
             return 1;
         }, (_) { infof("Added remote %s", name); return 0; });
     }
 
-    /**
-     * Higher priority wins
-     */
+    /* Optional user description for remote */
+    @Option("desc", "description", "User description to help identify the remote")
+    string description = "User added repository";
+    /* Higher priority wins */
     @Option("p", "priority", "Priority to enable this remote with")
     uint64_t priority = 0;
 }
