@@ -76,12 +76,42 @@ import std.stdio;
                     SupportedProtocols));
             return 1;
         }
+
+        /* URI is reachable? */
         if (uri.startsWith("file://"))
         {
             auto fileURIpath = uri["file://".length .. $];
             if (!fileURIpath.exists)
             {
                 error(format!"Doesn't like look a valid URI. Cannot find %s on disk."(fileURIpath));
+                return 1;
+            }
+        }
+
+        /* FIXME: use moss-fetcher to handle this */
+        if (uri.startsWith("http://", "https://"))
+        {
+            auto reachable = () @trusted
+            {
+                import etc.c.curl;
+                import std.string : toStringz;
+                /* attempt to "ping" the url */
+                auto curl = curl_easy_init();
+                long status = 0;
+                if (curl) {
+                    curl_easy_setopt(curl, CurlOption.url, uri.toStringz);
+                    curl_easy_setopt(curl, CurlOption.nobody, true);
+                    curl_easy_setopt(curl, CurlOption.followlocation, true);
+                    curl_easy_setopt(curl, CurlOption.connecttimeout, 10);
+                    curl_easy_perform(curl);
+                    curl_easy_getinfo(curl, CurlInfo.response_code, &status);
+                    curl_easy_cleanup(curl);
+                }
+                return status;
+            }();
+            if (reachable >= 300 || reachable < 200)
+            {
+                error(format!"Refusing to add remote as the URI is unreachable, status code: %s"(reachable));
                 return 1;
             }
         }
