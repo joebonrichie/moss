@@ -58,6 +58,21 @@ public final class RemoteManager
         () @trusted { config.load(installation.root); }();
         remotes = config.sections;
 
+        /* Check for new .conf files and add to system */
+        import std.file: exists;
+        foreach (remote; remotes)
+        {
+            immutable saneID = remote.id.map!((m) => (m.isAlphaNum ? m : '_').toLower)
+            .to!string;
+            auto remotePath = installation.joinPath(".moss", "remotes", saneID);
+            /* This is quite a big assumption */
+            if (!remotePath.exists)
+            {
+                trace(format!"Found new remote config %s, adding to system."(remote.id));
+                remotePath.mkdirRecurse();
+            }
+        }
+
         foreach (plugin; plugins)
         {
             registry.removePlugin(plugin);
